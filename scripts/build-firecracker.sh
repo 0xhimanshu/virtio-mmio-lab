@@ -27,6 +27,11 @@ rustup override set "$RUST_TOOLCHAIN" --path "$SRC"
 cargo_bin="$(command -v cargo)"
 ( cd "$SRC" && "$cargo_bin" build --release )
 
-install -m 0755 "$SRC/target/release/firecracker" "$OUT/firecracker"
+BIN=""
+for c in "$SRC/target/release/firecracker" "$SRC/build/cargo_target/release/firecracker"; do
+  [ -x "$c" ] && BIN="$c" && break
+done
+[ -n "$BIN" ] || { echo "firecracker binary not found"; exit 1; }
+install -m 0755 "$BIN" "$OUT/firecracker"
 echo "firecracker -> $OUT/firecracker"
 "$OUT/firecracker" --version || true
