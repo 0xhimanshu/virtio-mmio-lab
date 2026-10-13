@@ -6,7 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential bc bison flex libelf-dev libssl-dev cpio \
         gcc-multilib libc6-dev-i386 ca-certificates curl git sudo \
-        iproute2 iputils-ping && \
+        libseccomp-dev pkg-config iproute2 iputils-ping && \
     rm -rf /var/lib/apt/lists/*
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
