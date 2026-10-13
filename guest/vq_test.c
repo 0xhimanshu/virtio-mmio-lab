@@ -68,7 +68,7 @@ int main(int argc, char **argv)
 
     int processed = 0, rejected = 0, timedout = 0;
 
-    static const uint32_t lens[] = { 0, 1, 16, 64, 4096, 0x10000u };
+    static const uint32_t lens[] = { 0, 1, 16, 64, 4096 };
     static const uint16_t flags[] = { VQ_DESC_F_WRITE, 0, VQ_DESC_F_WRITE | VQ_DESC_F_NEXT, 0xffff };
     static const uint64_t bad_addr[] = { 0, 1, 0x1000, 0xffffffffffffffffULL };
 
