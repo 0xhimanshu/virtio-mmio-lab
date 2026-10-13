@@ -8,9 +8,11 @@
 #include <time.h>
 
 static const uint64_t BASES[] = {
-    0xc0001000ULL, 0xc0002000ULL, 0xc0003000ULL, 0xc0004000ULL, 0xc0005000ULL,
+    0xc0000000ULL, 0xc0001000ULL, 0xc0002000ULL, 0xc0003000ULL, 0xc0004000ULL,
+    0xc0005000ULL, 0xc0006000ULL, 0xc0007000ULL, 0xc0008000ULL,
 };
 #define NBASES (sizeof(BASES) / sizeof(BASES[0]))
+#define VQ_MAGIC_OK 0x74726976u
 
 static long now_ms(void)
 {
@@ -27,8 +29,8 @@ int main(int argc, char **argv)
     int cases = (argc > 2) ? atoi(argv[2]) : 64;
     if (argc > 1) want = strtoull(argv[1], NULL, 0);
 
-    /* Inventory: find the target device by id (default rng=4) or by base. */
-    uint64_t base = 0; uint32_t devid = 0;
+    /* Inventory: choose the target device (explicit base, else rng=4, else first). */
+    uint64_t base = 0; uint32_t devid = 0, first_base = 0, first_id = 0;
     for (unsigned i = 0; i < NBASES; i++) {
         struct vq q;
         if (vq_open(&q, BASES[i], 0x1000) != 0) continue;
@@ -36,12 +38,16 @@ int main(int argc, char **argv)
         uint32_t ver   = vq_mmio_read(&q, VQ_VERSION);
         uint32_t id    = vq_mmio_read(&q, VQ_DEVICE_ID);
         uint32_t qmax  = vq_mmio_read(&q, VQ_QUEUE_NUM_MAX);
-        printf("INV base=%#llx magic=%#x ver=%u devid=%u qmax=%u\n",
-               (unsigned long long)BASES[i], magic, ver, id, qmax);
-        if ((want && BASES[i] == want) || (!want && id == 4)) { base = BASES[i]; devid = id; }
+        int valid = (magic == VQ_MAGIC_OK);
+        printf("INV base=%#llx magic=%#x ver=%u devid=%u qmax=%u %s\n",
+               (unsigned long long)BASES[i], magic, ver, id, qmax, valid ? "OK" : "-");
+        if (valid && !first_base) { first_base = BASES[i]; first_id = id; }
+        if (want && BASES[i] == want && valid) { base = BASES[i]; devid = id; }
+        if (!want && id == 4 && valid) { base = BASES[i]; devid = id; }
         vq_close(&q);
     }
-    if (!base) { base = BASES[NBASES - 1]; }
+    if (!base) { base = first_base; devid = first_id; }
+    if (!base) { printf("LAB_RESULT error=nodev\n"); return 1; }
 
     struct vq q;
     if (vq_open(&q, base, 0x1000) != 0) { printf("LAB_RESULT error=open\n"); return 1; }
@@ -53,6 +59,7 @@ int main(int argc, char **argv)
     if (vq_setup_queue(&q, 0, 8) != 0) {
         printf("LAB_RESULT error=queue\n"); return 1;
     }
+    if (q.num == 0) { printf("LAB_RESULT error=qnum0\n"); return 1; }
     printf("RING base=%#llx devid=%u desc_gpa=%#llx avail_gpa=%#llx used_gpa=%#llx\n",
            (unsigned long long)base, devid,
            (unsigned long long)q.desc.gpa,
