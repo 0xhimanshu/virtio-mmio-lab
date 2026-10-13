@@ -1,0 +1,61 @@
+name: virtio-mmio lab
+
+# Intended to live at the ROOT of a fresh (public) repo containing the contents
+# of lab-ci/. Keep the root path-relative.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  lab:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check KVM
+        run: |
+          ls -l /dev/kvm || true
+          test -e /dev/kvm || { echo "::error::/dev/kvm missing on runner"; exit 1; }
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential bc bison flex libelf-dev libssl-dev cpio \
+            gcc-multilib libc6-dev-i386 ca-certificates curl git
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.97.0
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Cache firecracker build
+        uses: actions/cache@v4
+        with:
+          path: .lab/firecracker/target
+          key: fc-${{ hashFiles('scripts/build-firecracker.sh') }}
+
+      - name: Cache kernel tree
+        uses: actions/cache@v4
+        with:
+          path: .lab/linux-*
+          key: k-${{ hashFiles('scripts/build-kernel.sh', 'configs/kernel.fragment') }}
+
+      - name: Build firecracker
+        run: scripts/build-firecracker.sh
+
+      - name: Build kernel
+        run: scripts/build-kernel.sh
+
+      - name: Build initramfs
+        run: scripts/make-initramfs.sh
+
+      - name: Run lab
+        run: sudo -E env "PATH=$PATH" bash scripts/run-lab.sh
+
+      - name: Upload serial log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab-serial
+          path: .lab/out/lab-serial.log

@@ -1,0 +1,3 @@
+.lab/
+*.o
+vq_test

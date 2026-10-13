@@ -1,0 +1,50 @@
+# Minimal guest kernel fragment for the virtio-mmio device-model lab.
+# Applied on top of `make tinyconfig`.
+#
+# Transport ON, drivers for the devices under test OFF (they are driven from
+# userspace via /dev/mem). Re-enable a driver only to test the normal path.
+
+CONFIG_64BIT=y
+CONFIG_SMP=y
+CONFIG_MODULES=n
+CONFIG_PCI=n
+CONFIG_EXPERT=y
+
+# --- core fs / process ---
+CONFIG_PROC_FS=y
+CONFIG_SYSFS=y
+CONFIG_DEVTMPFS=y
+CONFIG_DEVTMPFS_MOUNT=y
+CONFIG_BINFMT_ELF=y
+CONFIG_MULTIUSER=y
+CONFIG_PRINTK=y
+CONFIG_TTY=y
+
+# --- initramfs + decompress ---
+CONFIG_BLK_DEV_INITRD=y
+CONFIG_RD_GZIP=y
+
+# --- serial console (control transport, kept separate from device under test) ---
+CONFIG_SERIAL_8250=y
+CONFIG_SERIAL_8250_CONSOLE=y
+
+# --- /dev/mem for userspace MMIO (lab only) ---
+CONFIG_DEVMEM=y
+# CONFIG_STRICT_DEVMEM is not set
+CONFIG_IO_STRICT_DEVMEM=n
+
+# --- virtio transport (mmio only) ---
+CONFIG_VIRTIO=y
+CONFIG_VIRTIO_MMIO=y
+CONFIG_VIRTIO_MMIO_CMDLINE_DEVICES=y
+
+# --- devices under test: keep DRIVERS OFF (drive them from userspace) ---
+# CONFIG_VIRTIO_BLK is not set
+# CONFIG_VIRTIO_NET is not set
+# CONFIG_VIRTIO_VSOCKETS is not set
+# CONFIG_HW_RANDOM_VIRTIO is not set
+# CONFIG_VIRTIO_PCI is not set
+
+# --- optional: turn ON to validate the normal driver path instead ---
+# CONFIG_HW_RANDOM_VIRTIO=y
+# CONFIG_HW_RANDOM=y
