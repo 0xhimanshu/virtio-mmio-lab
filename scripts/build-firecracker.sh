@@ -8,9 +8,11 @@ FIRECRACKER_REPO="${FIRECRACKER_REPO:-https://github.com/firecracker-microvm/fir
 WORK="${WORK:-$PWD/.lab}"
 SRC="$WORK/firecracker"
 OUT="$WORK/out"
+export CARGO_TARGET_DIR="$WORK/fc-target"
 mkdir -p "$WORK" "$OUT"
 
 if [ ! -d "$SRC/.git" ]; then
+  rm -rf "$SRC"
   git clone "$FIRECRACKER_REPO" "$SRC"
 fi
 git -C "$SRC" fetch --all --tags
@@ -28,7 +30,7 @@ cargo_bin="$(command -v cargo)"
 ( cd "$SRC" && "$cargo_bin" build --release )
 
 BIN=""
-for c in "$SRC/target/release/firecracker" "$SRC/build/cargo_target/release/firecracker"; do
+for c in "$CARGO_TARGET_DIR/release/firecracker" "$SRC/build/cargo_target/release/firecracker"; do
   [ -x "$c" ] && BIN="$c" && break
 done
 [ -n "$BIN" ] || { echo "firecracker binary not found"; exit 1; }

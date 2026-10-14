@@ -33,9 +33,7 @@ jobs:
       - name: Cache firecracker build
         uses: actions/cache@v4
         with:
-          path: |
-            .lab/firecracker/build/cargo_target
-            .lab/firecracker/target
+          path: .lab/fc-target
           key: fc-${{ hashFiles('scripts/build-firecracker.sh') }}
 
       - name: Cache kernel tree
