@@ -100,17 +100,30 @@ int main(int argc, char **argv)
         vq_notify(&q, 0);
 
         long deadline = now_ms() + 250;
-        int done = 0;
+        int delta = 0;
         while (now_ms() < deadline) {
-            if (*ui != before) { done = 1; break; }
+            delta = (uint16_t)(*ui - before);
+            if (delta) break;
             usleep(200);
         }
-        if (done) processed++;
-        else { timedout++; rejected++; }
 
-        printf("CASE id=%d base_off=%d addr=%#llx len=%u flags=%#x used_delta=%d %s\n",
-               c, (int)(addr - data.gpa), (unsigned long long)addr, L, fl,
-               (int)(*ui - before), done ? "processed" : "rejected");
+        /* Read the used-ring element(s): len>0 => device produced data (processed);
+         * len==0 => device completed but rejected the chain (e.g. read-only desc);
+         * no progress => timeout. */
+        uint32_t ulen = 0, uid = 0;
+        struct vq_used_elem *ur = vq_used_ring(&q);
+        for (int k = 0; k < delta; k++) {
+            struct vq_used_elem e = ur[(before + k) % q.num];
+            ulen += e.len;
+            uid = e.id;
+        }
+        const char *cls;
+        if (delta == 0) { cls = "timeout"; timedout++; rejected++; }
+        else if (ulen > 0) { cls = "processed"; processed++; }
+        else { cls = "rejected"; rejected++; }
+
+        printf("CASE id=%d addr=%#llx len=%u flags=%#x used_delta=%d used_len=%u used_id=%u %s\n",
+               c, (unsigned long long)addr, L, fl, delta, ulen, uid, cls);
         vbuf_free(&data);
     }
 
